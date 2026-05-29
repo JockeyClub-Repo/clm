@@ -1,0 +1,75 @@
+
+/*# sourceMappingURL=custom.min.css.map */
+
+
+:root{
+    /* --vz-vertical-menu-bg-dark: #035e32; */
+}
+
+.auth-one-bg .bg-overlay {
+  background: -webkit-gradient(linear, left top, right top, from(#747070), to(#918e8e));
+  background: linear-gradient(to right, #747070, #918e8e);
+  opacity: .5;
+}
+
+.error-basic-img {
+  max-width: 300px;
+}
+
+.navbar-header {
+  height: 60px;
+}
+
+.page-content {
+    padding: calc(60px + 1.5rem) calc(1.5rem / 2) 60px calc(1.5rem / 2);
+}
+
+.header-item {
+  height: 60px;
+}
+
+.menu-title span {
+  padding: 5px 20px;
+}
+
+.navbar-menu .navbar-nav .nav-link {
+  padding: .380rem 1.5rem;
+}
+
+.footer {
+  padding: 15px calc(1.5rem / 2);
+  height: auto;
+}
+
+/*
+
+@media (max-width: 768px) {
+    .page-content {
+        padding-left: 0px !important;
+        padding-right: 0px !important;
+    }
+}
+
+.page-content {
+        padding-left: 0px !important;
+        padding-right: 0px !important;
+    }
+.page-content {
+    padding: 84px 0px 0px;
+}
+
+.page-title-box {
+  margin: -23px -0rem 1.5rem -0rem;
+  padding-right: -15px;
+  padding-left: -15px;
+}
+
+
+.row>* {
+  padding-right: 15px;
+  padding-left: 15px;
+}
+
+*/
+
+
