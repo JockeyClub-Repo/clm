@@ -1,412 +1,191 @@
 <?php
 
 namespace App\Http\Controllers;
-
 use Illuminate\Http\Request;
-
-use Carbon\Carbon;
-use App\Models\Ticket;
-use App\Models\Status;
-use App\Models\Category;
-use App\Models\User;
-use App\Models\Department;
-use App\Models\Area;
 
 class DashboardController extends Controller
 {
-    public function dashboardRouter(Request $request)
-    {
-        $role = auth()->user()->role;
+  public function dashboardRouter()
+  {
+    $role = auth()->user()->role;
+    return match ($role) {
+      'admin' => $this->adminDashboard(),
+      'agent' => $this->agentDashboard(),
+      default => abort(403, 'Rol no autorizado.')
+    };
+  }
 
-        return match ($role) {
-            'client' => $this->clientDashboard($request),
-            'agent'  => $this->agentDashboard($request),
-            'admin'  => $this->adminDashboard($request),
-            default  => abort(403, 'Rol no autorizado.'),
-        };
+  public function adminDashboard()
+  {
+    return view('dashboard', [
+      'view' => 'admin'
+    ]);
+  }
+
+  public function agentDashboard()
+  {
+    return view('dashboard', [
+      'view' => 'agent'
+    ]);
+  }
+
+  public function adminData(Request $request)
+  {
+    $filter = $request->filter ?? 'active';
+    $contracts = Contract::with('provider');
+
+    switch ($filter) {
+      case 'active': 
+        $contracts->where('status', 'active')->whereDate('end_date', '>=', now());
+        break;
+      case 'expiring': 
+        $contracts->where('status', 'active')->get()->filter(function ($contract) {
+          $days = now()->diffInDays($contract->end_date, false);
+          return $days <= $contract->renewal_notice_days && $days >= 0; 
+        });
+        break;
+      case 'expired':
+        $contracts->whereDate('end_date', '<', now());
+        break;
+        case 'not_renewed':
+          $contracts->whereDate('end_date', '<', now())->where('auto_renewal', false);
+        break;
+      default:
+        break;
     }
 
-    public function adminDashboard(Request $request)
-    {
-        $mes = $request->input('month', now()->month);
-        $anio = $request->input('year', now()->year);
+    /*
+    |--------------------------------------------------------------------------
+    | COLLECTION
+    |--------------------------------------------------------------------------
+    */
 
-        $departmentId = $request->input('department_id');
-        $areaId = $request->input('area_id');
-        $employeeId = $request->input('employee_id');
+    if ($filter === 'expiring') {
 
-        $query = Ticket::with([
-            'category',
-            'priority',
-            'status',
-            'creator.area.department',
-            'agent',
-            'messages'
-            ])
-        ->whereMonth('created_at', $mes)
-        ->whereYear('created_at', $anio);
-
-
-/*
-|--------------------------------------------------------------------------
-| FILTRO POR DEPARTAMENTO
-|--------------------------------------------------------------------------
-*/
-if ($departmentId) {
-    $query->whereHas('area.department', function ($q) use ($departmentId) {
-        $q->where('id', $departmentId);
-    });
-}
-
-/*
-|--------------------------------------------------------------------------
-| FILTRO POR AREA
-|--------------------------------------------------------------------------
-*/
-
-if ($areaId) {
-    $query->where('area_id', $areaId);
-}
-
-/*
-|--------------------------------------------------------------------------
-| FILTRO POR EMPLEADO / AGENTE
-|--------------------------------------------------------------------------
-*/
-if ($employeeId) {
-    $query->where('assigned_to', $employeeId);
-}
-
-$tickets = $query->get();
-
-        $totalTickets = $tickets->count();
-
-        $statusList = Status::orderBy('id')->get();
-        $estilos = [
-            1 => ['color' => 'warning',   'icono' => 'bx bx-help-circle'],
-            2 => ['color' => 'primary',   'icono' => 'bx bx-loader-circle'],
-            3 => ['color' => 'info',      'icono' => 'bx bx-user-voice'],
-            4 => ['color' => 'info',      'icono' => 'bx bx-user-pin'],
-            5 => ['color' => 'success',   'icono' => 'bx bx-check-circle'],
-            6 => ['color' => 'dark',      'icono' => 'bx bx-lock-alt'],
-            7 => ['color' => 'secondary', 'icono' => 'bx bx-history'],
-            8 => ['color' => 'danger',    'icono' => 'bx bx-x-circle'],
-        ];
-
-        $estados = $statusList->map(function ($status) use ($tickets, $totalTickets, $estilos) {
-            $cantidad = $tickets->where('status_id', $status->id)->count();
-            return [
-                'id'         => $status->id,
-                'nombre'     => $status->name,
-                'total'      => $cantidad,
-                'color'      => $estilos[$status->id]['color'] ?? 'secondary',
-                'icono'      => $estilos[$status->id]['icono'] ?? 'bx bx-circle',
-                'porcentaje' => $totalTickets > 0 ? round(($cantidad / $totalTickets) * 100, 2) : 0,
-            ];
-        });
-
-        $categoriasData = $tickets->groupBy('category_id')->map(function ($group, $catId) {
-            return [
-                'nombre' => optional($group->first()->category)->name ?? 'Sin Categoría',
-                'total'  => $group->count(),
-            ];
-        })->values();
-
-        $prioridadesData = $tickets->groupBy('priority_id')->map(function ($group, $priorityId) {
-            $prioridad = $group->first()->priority;
-            return [
-                'nombre' => $prioridad->name ?? 'Sin Prioridad',
-                'total'  => $group->count(),
-                'color'  => $prioridad->color ?? '#6c757d',
-            ];
-        })->values();
-
-        $eventosCalendar = Ticket::with('creator:id,name')
-            ->select('id', 'user_id', 'created_at')
+        $contracts = Contract::with('provider')
             ->get()
-            ->map(function ($ticket) {
-                return [
-                    'title' => "ID {$ticket->id} - {$ticket->creator->name}",
-                    'start' => $ticket->created_at->toDateString(),
-                    'url' => route('tickets.detalle', $ticket->id),
-                ];
+            ->filter(function ($contract) {
+
+                $days = now()
+                    ->diffInDays($contract->end_date, false);
+
+                return $days <= $contract->renewal_notice_days
+                    && $days >= 0;
             });
 
-        $departamentosData = $tickets->groupBy(function ($ticket) {
-            return optional(optional(optional($ticket->creator)->area)->department)->id;
-        })->map(function ($group) {
-            $department = optional(optional($group->first()->creator)->area)->department;
+    } else {
 
-            return [
-                'nombre' => optional($department)->name ?? 'Sin Departamento',
-                'total'  => $group->count(),
-            ];
-        })->values();
+        $contracts = $contracts->get();
+    }
 
-        $areasData = $tickets->groupBy(function ($ticket) {
-            return optional(optional($ticket->creator)->area)->id;
-        })->map(function ($group) {
-            $area = optional($group->first()->creator)->area;
+    /*
+    |--------------------------------------------------------------------------
+    | KPIS
+    |--------------------------------------------------------------------------
+    */
 
-            return [
-                'nombre' => optional($area)->name ?? 'Sin Área',
-                'total'  => $group->count(),
-            ];
-        })->values();
+    $totalContracts = Contract::count();
 
-       $agentesData = User::where('role', 'agent')
-    ->orderBy('name')
-    ->get()
-    ->map(function ($agente) use ($tickets) {
+    $activeContracts = Contract::where('status', 'active')
+        ->whereDate('end_date', '>=', now())
+        ->count();
 
-        $ticketsAgente = $tickets->where('assigned_to', $agente->id);
+    $expiredContracts = Contract::whereDate('end_date', '<', now())
+        ->count();
 
-        $total = $ticketsAgente->count();
+    $expiringSoon = Contract::get()
+        ->filter(function ($contract) {
 
-        $cerrados = $ticketsAgente->filter(function ($ticket) {
-            return in_array($ticket->status_id, [5, 6]) || !is_null($ticket->closed_at);
-        })->count();
+            $days = now()
+                ->diffInDays($contract->end_date, false);
 
-        $pendientes = $total - $cerrados;
+            return $days <= $contract->renewal_notice_days
+                && $days >= 0;
+        })
+        ->count();
 
-        $minutosRespuesta = [];
-        $minutosSolucion = [];
+    /*
+    |--------------------------------------------------------------------------
+    | CALENDAR
+    |--------------------------------------------------------------------------
+    */
 
-        foreach ($ticketsAgente as $ticket) {
+    $calendar = $contracts->map(function ($contract) {
 
-            $primerMensajeAgente = $ticket->messages
-                ->where('user_id', $agente->id)
-                ->sortBy('created_at')
-                ->first();
+        $days = now()
+            ->diffInDays($contract->end_date, false);
 
-            if ($primerMensajeAgente) {
-                $minutosRespuesta[] = $ticket->created_at->diffInMinutes($primerMensajeAgente->created_at);
-            }
+        $color = '#34c38f';
 
-            if ($ticket->closed_at) {
-                $minutosSolucion[] = $ticket->created_at->diffInMinutes($ticket->closed_at);
-            }
+        if ($days <= $contract->renewal_notice_days) {
+            $color = '#f1b44c';
         }
 
-        $promedioRespuesta = count($minutosRespuesta) > 0
-            ? round(array_sum($minutosRespuesta) / count($minutosRespuesta))
-            : null;
-
-        $promedioSolucion = count($minutosSolucion) > 0
-            ? round(array_sum($minutosSolucion) / count($minutosSolucion))
-            : null;
+        if ($days < 0) {
+            $color = '#f46a6a';
+        }
 
         return [
-            'nombre' => $agente->name,
-            'total' => $total,
-            'cerrados' => $cerrados,
-            'pendientes' => $pendientes,
-            'promedio_respuesta' => $promedioRespuesta !== null ? $this->formatearMinutos($promedioRespuesta) : 'Sin respuesta',
-            'promedio_solucion' => $promedioSolucion !== null ? $this->formatearMinutos($promedioSolucion) : 'Sin cierre',
+            'title' => $contract->name,
+            'start' => $contract->end_date,
+            'color' => $color,
         ];
     });
-           
-/*
-|--------------------------------------------------------------------------
-| COMBOS DE FILTRO
-|--------------------------------------------------------------------------
-*/
 
-        $departments = Department::with('areas')
-    ->orderBy('name')
-    ->get();
+    /*
+    |--------------------------------------------------------------------------
+    | TIMELINE
+    |--------------------------------------------------------------------------
+    */
 
-        $areas = Area::when($departmentId, function ($query) use ($departmentId) {
-                $query->where('department_id', $departmentId);
-            })
-            ->orderBy('name')
-            ->get();
-
-        $employees = User::where('role', 'agent')
-            ->orderBy('name')
-            ->get();
-
-        return view('dashboard', [
-            'view' => 'admin',
-            'estados' => $estados,
-            'categoriasData' => $categoriasData,
-            'prioridadesData' => $prioridadesData,
-            'eventosCalendar' => $eventosCalendar,
-            'departamentosData' => $departamentosData,
-            'areasData' => $areasData,
-            'agentesData' => $agentesData,
-
-            'departments' => $departments,
-            'areas' => $areas,
-            'employees' => $employees,
-
-            'departmentId' => $departmentId,
-            'areaId' => $areaId,
-            'employeeId' => $employeeId,
-        ]);
-    }
-
-    public function clientDashboard(Request $request)
-    {
-        $userId = auth()->id();
-        $mes = $request->input('month', now()->month);
-        $anio = $request->input('year', now()->year);
-
-        // Obtener todos los estados
-        $statusList = Status::orderBy('id')->get();
-
-        // Obtener los tickets del usuario filtrados por mes y año
-        $tickets = Ticket::where('user_id', $userId)
-            ->whereMonth('created_at', $mes)
-            ->whereYear('created_at', $anio)
-            ->get();
-
-        $totalTickets = $tickets->count();
-
-        // Estilos personalizados por ID de estado
-        $estilos = [
-            1 => ['color' => 'warning',   'icono' => 'bx bx-help-circle'],
-            2 => ['color' => 'primary',   'icono' => 'bx bx-loader-circle'],
-            3 => ['color' => 'info',      'icono' => 'bx bx-user-voice'],
-            4 => ['color' => 'info',      'icono' => 'bx bx-user-pin'],
-            5 => ['color' => 'success',   'icono' => 'bx bx-check-circle'],
-            6 => ['color' => 'dark',      'icono' => 'bx bx-lock-alt'],
-            7 => ['color' => 'secondary', 'icono' => 'bx bx-history'],
-            8 => ['color' => 'danger',    'icono' => 'bx bx-x-circle'],
-        ];
-
-        // Armar la colección de estados con los datos contados
-        $estados = $statusList->map(function ($status) use ($tickets, $totalTickets, $estilos) {
-            $cantidad = $tickets->where('status_id', $status->id)->count();
-            $id = $status->id;
+    $providers = $contracts
+        ->groupBy(fn($c) => optional($c->provider)->name ?? 'Sin proveedor')
+        ->map(function ($items, $providerName) {
 
             return [
-                'id'         => $id,
-                'nombre'     => $status->name,
-                'total'      => $cantidad,
-                'color'      => $estilos[$id]['color'] ?? 'secondary',
-                'icono'      => $estilos[$id]['icono'] ?? 'bx bx-circle',
-                'porcentaje' => $totalTickets > 0 ? round(($cantidad / $totalTickets) * 100, 2) : 0,
-            ];
-        });
+                'provider' => $providerName,
 
-        $categoriasData = $tickets->groupBy('category_id')->map(function ($group, $catId) {
-            return [
-                'nombre' => optional($group->first()->category)->name ?? 'Sin Categoría',
-                'total'  => $group->count(),
-            ];
-        })->values(); // limpia claves
+                'contracts' => $items
+                    ->sortBy('start_date')
+                    ->map(function ($contract) {
 
-        $prioridadesData = $tickets->groupBy('priority_id')->map(function ($group, $priorityId) {
-            return [
-                'nombre' => optional($group->first()->priority)->name ?? 'Sin Prioridad',
-                'total'  => $group->count(),
-            ];
-        })->values(); // limpia claves
+                        $status = 'Activo';
 
-        return view('dashboard', [
-            'view' => 'client',
-            'estados' => $estados,
-            'categoriasData' => $categoriasData,
-            'prioridadesData' => $prioridadesData,
-        ]);
-    }
+                        if (now()->gt($contract->end_date)) {
+                            $status = 'Vencido';
+                        }
 
-    public function agentDashboard(Request $request)
-    {
-        $userId = auth()->id();
-        $mes = $request->input('month', now()->month);
-        $anio = $request->input('year', now()->year);
+                        if (
+                            now()->gt($contract->end_date)
+                            && !$contract->auto_renewal
+                        ) {
+                            $status = 'No renovado';
+                        }
 
-        $tickets = Ticket::with(['category', 'priority', 'status'])
-            ->where('assigned_to', $userId)
-            ->whereMonth('created_at', $mes)
-            ->whereYear('created_at', $anio)
-            ->get();
-
-        $totalTickets = $tickets->count();
-
-        // Listado de estados
-        $statusList = Status::orderBy('id')->get();
-
-        $estilos = [
-            1 => ['color' => 'warning',   'icono' => 'bx bx-help-circle'],
-            2 => ['color' => 'primary',   'icono' => 'bx bx-loader-circle'],
-            3 => ['color' => 'info',      'icono' => 'bx bx-user-voice'],
-            4 => ['color' => 'info',      'icono' => 'bx bx-user-pin'],
-            5 => ['color' => 'success',   'icono' => 'bx bx-check-circle'],
-            6 => ['color' => 'dark',      'icono' => 'bx bx-lock-alt'],
-            7 => ['color' => 'secondary', 'icono' => 'bx bx-history'],
-            8 => ['color' => 'danger',    'icono' => 'bx bx-x-circle'],
-        ];
-
-        $estados = $statusList->map(function ($status) use ($tickets, $totalTickets, $estilos) {
-            $cantidad = $tickets->where('status_id', $status->id)->count();
-            return [
-                'id'         => $status->id,
-                'nombre'     => $status->name,
-                'total'      => $cantidad,
-                'color'      => $estilos[$status->id]['color'] ?? 'secondary',
-                'icono'      => $estilos[$status->id]['icono'] ?? 'bx bx-circle',
-                'porcentaje' => $totalTickets > 0 ? round(($cantidad / $totalTickets) * 100, 2) : 0,
-            ];
-        });
-
-        $categoriasData = $tickets->groupBy('category_id')->map(function ($group, $catId) {
-            return [
-                'nombre' => optional($group->first()->category)->name ?? 'Sin Categoría',
-                'total'  => $group->count(),
+                        return [
+                            'name' => $contract->name,
+                            'amount' => $contract->amount,
+                            'currency' => $contract->currency,
+                            'start_date' => $contract->start_date->format('Y-m-d'),
+                            'end_date' => $contract->end_date->format('Y-m-d'),
+                            'status' => $status,
+                        ];
+                    })->values()
             ];
         })->values();
 
-        $prioridadesData = $tickets->groupBy('priority_id')->map(function ($group, $priorityId) {
-            $prioridad = $group->first()->priority;
-            return [
-                'nombre' => $prioridad->name ?? 'Sin Prioridad',
-                'total'  => $group->count(),
-                'color'  => $prioridad->color ?? '#6c757d',
-            ];
-        })->values();
+    return response()->json([
+        'kpis' => [
+            'total' => $totalContracts,
+            'active' => $activeContracts,
+            'expired' => $expiredContracts,
+            'expiring' => $expiringSoon,
+        ],
 
-        // Calendario: todos los tickets asignados al agente (sin filtro de mes/año)
-        $eventosCalendar = Ticket::with('creator:id,name')
-        ->where('assigned_to', $userId)
-        ->select('id', 'user_id', 'created_at')
-        ->get()
-        ->map(function ($ticket) {
-            return [
-                'title' => "ID {$ticket->id} - {$ticket->creator->name}",
-                'start' => $ticket->created_at->toDateString(),
-                'url' => route('tickets.detalle', $ticket->id),
-            ];
-        });
+        'calendar' => $calendar,
 
-        return view('dashboard', [
-            'view' => 'agent',
-            'eventosCalendar' => $eventosCalendar,
-            'estados' => $estados,
-            'categoriasData' => $categoriasData,
-            'prioridadesData' => $prioridadesData,
-        ]);
-    }
-
-        private function formatearMinutos($minutos)
-{
-    if ($minutos < 60) {
-        return $minutos . ' min';
-    }
-
-    $horas = floor($minutos / 60);
-    $minutosRestantes = $minutos % 60;
-
-    if ($horas < 24) {
-        return $horas . ' h ' . $minutosRestantes . ' min';
-    }
-
-    $dias = floor($horas / 24);
-    $horasRestantes = $horas % 24;
-
-    return $dias . ' d ' . $horasRestantes . ' h';
+        'providersTimeline' => $providers,
+    ]);
 }
-
+  }
 }

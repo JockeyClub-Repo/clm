@@ -7,11 +7,16 @@ use App\Http\Controllers\DashboardController;
 
 Route::get('/', function () { return view('welcome'); });
 
-Route::get('/dashboard', [DashboardController::class, 'dashboardRouter'])->middleware(['auth'])->name('dashboard');
 
 // 📌 Acceso común a todos los usuarios autenticados
 Route::middleware('auth')->group(function () {
-  Route::get('/dashboard', function () { return view('dashboard');})->name('dashboard');
+  // Dashboard
+  Route::get('/dashboard', [DashboardController::class, 'dashboardRouter'])->name('dashboard');
+  Route::get('/dashboard/stats', [DashboardDataController::class, 'stats']);
+  Route::get('/dashboard/calendar', [DashboardDataController::class, 'calendar']);
+  Route::get('/dashboard/timeline', [DashboardDataController::class, 'timeline']);
+  Route::get('/dashboard/expiring-contracts', [DashboardDataController::class, 'expiringContracts']);
+  Route::get('/dashboard/charts', [DashboardDataController::class, 'charts']);
   // Notificaciones
   Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
   Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');

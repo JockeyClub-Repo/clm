@@ -6,7 +6,7 @@
 <div class="page-content">
     <div class="container-fluid">
 
-        {{-- Título --}}
+        {{-- TITULO --}}
         <div class="row">
             <div class="col-12">
                 <div class="page-title-box d-sm-flex align-items-center justify-content-between">
@@ -14,24 +14,29 @@
 
                     <div class="page-title-right">
                         <ol class="breadcrumb m-0">
-                            <li class="breadcrumb-item"><a href="#">Inicio</a></li>
-                            <li class="breadcrumb-item active">Dashboard</li>
+                            <li class="breadcrumb-item">
+                                <a href="#">Inicio</a>
+                            </li>
+
+                            <li class="breadcrumb-item active">
+                                Dashboard
+                            </li>
                         </ol>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Contenido según el rol --}}
+        {{-- CONTENIDO --}}
         <div class="row">
             <div class="col-lg-12">
-                @if($view === 'agent')
-                    @include('dashboard.partials.agent')
-                @elseif($view === 'admin')
+
+                @if($view === 'admin')
                     @include('dashboard.partials.admin')
-                @else
-                    @include('dashboard.partials.client')
+                @elseif($view === 'agent')
+                    @include('dashboard.partials.agent')
                 @endif
+
             </div>
         </div>
 
@@ -42,5 +47,3 @@
 @push('scripts')
     @stack('dashboard-scripts')
 @endpush
-
-
