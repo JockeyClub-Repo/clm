@@ -187,5 +187,4 @@ class DashboardController extends Controller
         'providersTimeline' => $providers,
     ]);
 }
-  }
 }

@@ -48,6 +48,11 @@ class Contract extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function files()
+{
+    return $this->hasMany(ContractFile::class);
+}
+
     public function notificationChannels()
     {
         return $this->hasMany(ContractNotificationChannel::class);

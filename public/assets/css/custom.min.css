@@ -3,7 +3,9 @@
 
 
 :root{
-    /* --vz-vertical-menu-bg-dark: #035e32; */
+  --vz-vertical-menu-bg-dark: #595b5e;
+  --vz-vertical-menu-item-color-dark: #fff;
+  --vz-vertical-menu-title-color-dark: #fff;
 }
 
 .auth-one-bg .bg-overlay {

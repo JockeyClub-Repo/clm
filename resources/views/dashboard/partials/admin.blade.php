@@ -1,167 +1,124 @@
+@push('styles')
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+
+<style>
+.timeline-provider{
+    border-left:3px solid #405189;
+    padding-left:20px;
+    margin-bottom:30px;
+}
+
+.timeline-contract{
+    position:relative;
+    margin-bottom:15px;
+    padding:15px;
+    border:1px solid #e9ebec;
+    border-radius:8px;
+    background:#fff;
+}
+
+.timeline-contract::before{
+    content:'';
+    position:absolute;
+    left:-28px;
+    top:18px;
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    background:#405189;
+}
+</style>
+@endpush
+
+<div class="card card-body mb-4">
+    <h5 class="text-primary">
+        Bienvenido, {{ auth()->user()->name }}
+    </h5>
+
+    <p class="mb-0">
+        Resumen general de contratos y vencimientos.
+    </p>
+</div>
+
+{{-- FILTRO --}}
+<div class="row mb-4">
+
+    <div class="col-md-4">
+
+        <label class="form-label">
+            Mostrar
+        </label>
+
+        <select id="filterContracts" class="form-select">
+
+            <option value="active">
+                Contratos activos
+            </option>
+
+            <option value="expiring">
+                Próximos a vencer
+            </option>
+
+            <option value="expired">
+                Contratos vencidos
+            </option>
+
+            <option value="not_renewed">
+                No renovados
+            </option>
+
+            <option value="all">
+                Todos
+            </option>
+
+        </select>
+
+    </div>
+
+</div>
+
+{{-- KPIS --}}
 <div class="row">
 
     <div class="col-xl-3 col-md-6">
-
         <div class="card card-animate">
-
-            <div class="card-body">
-
-                <div class="d-flex justify-content-between">
-
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-0">
-                            Proveedores
-                        </p>
-
-                        <h2 class="mt-4 ff-secondary fw-semibold">
-                            {{ $totalProviders }}
-                        </h2>
-                    </div>
-
-                    <div>
-                        <div class="avatar-sm">
-                            <span class="avatar-title bg-soft-primary text-primary rounded-circle fs-3">
-                                <i class="ri-building-2-line"></i>
-                            </span>
-                        </div>
-                    </div>
-
-                </div>
-
+            <div class="card-body text-center">
+                <h5>Total Contratos</h5>
+                <h2 id="kpi_total">0</h2>
             </div>
-
         </div>
-
     </div>
 
     <div class="col-xl-3 col-md-6">
-
         <div class="card card-animate">
-
-            <div class="card-body">
-
-                <div class="d-flex justify-content-between">
-
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-0">
-                            Contratos Activos
-                        </p>
-
-                        <h2 class="mt-4 ff-secondary fw-semibold">
-                            {{ $activeContracts }}
-                        </h2>
-                    </div>
-
-                    <div>
-                        <div class="avatar-sm">
-                            <span class="avatar-title bg-soft-success text-success rounded-circle fs-3">
-                                <i class="ri-file-list-3-line"></i>
-                            </span>
-                        </div>
-                    </div>
-
-                </div>
-
+            <div class="card-body text-center">
+                <h5>Activos</h5>
+                <h2 id="kpi_active">0</h2>
             </div>
-
         </div>
-
     </div>
 
     <div class="col-xl-3 col-md-6">
-
         <div class="card card-animate">
-
-            <div class="card-body">
-
-                <div class="d-flex justify-content-between">
-
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-0">
-                            Por Vencer
-                        </p>
-
-                        <h2 class="mt-4 ff-secondary fw-semibold text-warning">
-                            {{ $expiringContracts }}
-                        </h2>
-                    </div>
-
-                    <div>
-                        <div class="avatar-sm">
-                            <span class="avatar-title bg-soft-warning text-warning rounded-circle fs-3">
-                                <i class="ri-alarm-warning-line"></i>
-                            </span>
-                        </div>
-                    </div>
-
-                </div>
-
+            <div class="card-body text-center">
+                <h5>Por vencer</h5>
+                <h2 id="kpi_expiring">0</h2>
             </div>
-
         </div>
-
     </div>
 
     <div class="col-xl-3 col-md-6">
-
         <div class="card card-animate">
-
-            <div class="card-body">
-
-                <div class="d-flex justify-content-between">
-
-                    <div>
-                        <p class="text-uppercase fw-medium text-muted mb-0">
-                            Vencidos
-                        </p>
-
-                        <h2 class="mt-4 ff-secondary fw-semibold text-danger">
-                            {{ $expiredContracts }}
-                        </h2>
-                    </div>
-
-                    <div>
-                        <div class="avatar-sm">
-                            <span class="avatar-title bg-soft-danger text-danger rounded-circle fs-3">
-                                <i class="ri-close-circle-line"></i>
-                            </span>
-                        </div>
-                    </div>
-
-                </div>
-
+            <div class="card-body text-center">
+                <h5>Vencidos</h5>
+                <h2 id="kpi_expired">0</h2>
             </div>
-
         </div>
-
     </div>
 
 </div>
 
-{{-- GRAFICO --}}
-<div class="row mt-4">
-
-    <div class="col-xl-12">
-
-        <div class="card">
-
-            <div class="card-header">
-                <h4 class="card-title mb-0">
-                    Comparativo de Contratos por Año
-                </h4>
-            </div>
-
-            <div class="card-body">
-                <div id="contracts_chart"></div>
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-{{-- TABLA --}}
+{{-- CALENDARIO --}}
 <div class="row mt-4">
 
     <div class="col-12">
@@ -170,63 +127,36 @@
 
             <div class="card-header">
                 <h4 class="card-title mb-0">
-                    Contratos Próximos a Vencer
+                    Calendario de vencimientos
+                </h4>
+            </div>
+
+            <div class="card-body">
+                <div id="calendar"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{{-- TIMELINE --}}
+<div class="row mt-4">
+
+    <div class="col-12">
+
+        <div class="card">
+
+            <div class="card-header">
+                <h4 class="card-title mb-0">
+                    Historial de contratos por proveedor
                 </h4>
             </div>
 
             <div class="card-body">
 
-                <div class="table-responsive">
-
-                    <table class="table table-bordered align-middle">
-
-                        <thead class="table-light">
-
-                            <tr>
-                                <th>Proveedor</th>
-                                <th>Contrato</th>
-                                <th>Monto</th>
-                                <th>Fecha Final</th>
-                                <th>Días Restantes</th>
-                            </tr>
-
-                        </thead>
-
-                        <tbody>
-
-                            @foreach($contractsToExpire as $contract)
-
-                            <tr>
-
-                                <td>
-                                    {{ $contract->provider->name }}
-                                </td>
-
-                                <td>
-                                    {{ $contract->name }}
-                                </td>
-
-                                <td>
-                                    {{ $contract->amount }}
-                                </td>
-
-                                <td>
-                                    {{ $contract->end_date }}
-                                </td>
-
-                                <td>
-                                    {{ now()->diffInDays($contract->end_date, false) }}
-                                </td>
-
-                            </tr>
-
-                            @endforeach
-
-                        </tbody>
-
-                    </table>
-
-                </div>
+                <div id="timelineContainer"></div>
 
             </div>
 
@@ -238,32 +168,152 @@
 
 @push('dashboard-scripts')
 
-<script src="{{ asset('assets/libs/apexcharts/apexcharts.min.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 
 <script>
 
 document.addEventListener('DOMContentLoaded', function () {
 
-    new ApexCharts(document.querySelector("#contracts_chart"), {
+    const filterContracts =
+        document.getElementById('filterContracts');
 
-        chart: {
-            type: 'line',
-            height: 350
-        },
+    let calendar = null;
 
-        series: [{
-            name: 'Monto Contratos',
-            data: @json($chartData)
-        }],
+    async function loadDashboard() {
 
-        xaxis: {
-            categories: @json($chartYears)
+        const filter = filterContracts.value;
+
+        const response = await fetch(
+            `/dashboard/admin/data?filter=${filter}`
+        );
+
+        const data = await response.json();
+
+        /*
+        |--------------------------------------------------------------------------
+        | KPIS
+        |--------------------------------------------------------------------------
+        */
+
+        document.getElementById('kpi_total').innerHTML =
+            data.kpis.total;
+
+        document.getElementById('kpi_active').innerHTML =
+            data.kpis.active;
+
+        document.getElementById('kpi_expiring').innerHTML =
+            data.kpis.expiring;
+
+        document.getElementById('kpi_expired').innerHTML =
+            data.kpis.expired;
+
+        /*
+        |--------------------------------------------------------------------------
+        | CALENDAR
+        |--------------------------------------------------------------------------
+        */
+
+        if (calendar) {
+            calendar.destroy();
         }
 
-    }).render();
+        calendar = new FullCalendar.Calendar(
+            document.getElementById('calendar'),
+            {
+                initialView: 'dayGridMonth',
+                locale: 'es',
+                height: 650,
+                events: data.calendar
+            }
+        );
 
+        calendar.render();
+
+        /*
+        |--------------------------------------------------------------------------
+        | TIMELINE
+        |--------------------------------------------------------------------------
+        */
+
+        let html = '';
+
+        data.providersTimeline.forEach(provider => {
+
+            html += `
+                <div class="timeline-provider">
+
+                    <h4 class="mb-4">
+                        ${provider.provider}
+                    </h4>
+            `;
+
+            provider.contracts.forEach(contract => {
+
+                let badge = 'success';
+
+                if(contract.status === 'Vencido')
+                    badge = 'danger';
+
+                if(contract.status === 'No renovado')
+                    badge = 'dark';
+
+                html += `
+                    <div class="timeline-contract">
+
+                        <div class="row">
+
+                            <div class="col-md-6">
+
+                                <h5>
+                                    ${contract.name}
+                                </h5>
+
+                                <div>
+                                    ${contract.start_date}
+                                    →
+                                    ${contract.end_date}
+                                </div>
+
+                            </div>
+
+                            <div class="col-md-3 text-center">
+
+                                <h5>
+                                    ${contract.currency}
+                                    ${contract.amount}
+                                </h5>
+
+                            </div>
+
+                            <div class="col-md-3 text-end">
+
+                                <span class="badge bg-${badge}">
+                                    ${contract.status}
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                `;
+            });
+
+            html += `
+                </div>
+            `;
+        });
+
+        document.getElementById('timelineContainer').innerHTML = html;
+    }
+
+    filterContracts.addEventListener(
+        'change',
+        loadDashboard
+    );
+
+    loadDashboard();
 });
-
 </script>
 
 @endpush
