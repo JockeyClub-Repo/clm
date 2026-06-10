@@ -1,190 +1,235 @@
 <?php
 
 namespace App\Http\Controllers;
+
+use App\Models\Contract;
+use App\Models\Provider;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-  public function dashboardRouter()
-  {
-    $role = auth()->user()->role;
-    return match ($role) {
-      'admin' => $this->adminDashboard(),
-      'agent' => $this->agentDashboard(),
-      default => abort(403, 'Rol no autorizado.')
-    };
-  }
-
-  public function adminDashboard()
-  {
-    return view('dashboard', [
-      'view' => 'admin'
-    ]);
-  }
-
-  public function agentDashboard()
-  {
-    return view('dashboard', [
-      'view' => 'agent'
-    ]);
-  }
-
-  public function adminData(Request $request)
-  {
-    $filter = $request->filter ?? 'active';
-    $contracts = Contract::with('provider');
-
-    switch ($filter) {
-      case 'active': 
-        $contracts->where('status', 'active')->whereDate('end_date', '>=', now());
-        break;
-      case 'expiring': 
-        $contracts->where('status', 'active')->get()->filter(function ($contract) {
-          $days = now()->diffInDays($contract->end_date, false);
-          return $days <= $contract->renewal_notice_days && $days >= 0; 
-        });
-        break;
-      case 'expired':
-        $contracts->whereDate('end_date', '<', now());
-        break;
-        case 'not_renewed':
-          $contracts->whereDate('end_date', '<', now())->where('auto_renewal', false);
-        break;
-      default:
-        break;
+    public function dashboardRouter()
+    {
+        return view('dashboard');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | COLLECTION
-    |--------------------------------------------------------------------------
-    */
+    public function adminData(Request $request)
+    {
+        $filter = $request->filter;
 
-    if ($filter === 'expiring') {
+        $contracts = Contract::with('provider');
 
-        $contracts = Contract::with('provider')
-            ->get()
-            ->filter(function ($contract) {
+        switch ($filter) {
 
-                $days = now()
-                    ->diffInDays($contract->end_date, false);
+            case 'active':
+                $contracts->where('status', 'active');
+                break;
 
-                return $days <= $contract->renewal_notice_days
-                    && $days >= 0;
-            });
+            case 'renewed':
+                $contracts->where('status', 'renewed');
+                break;
 
-    } else {
+            case 'not_renewed':
+                $contracts->where('status', 'not_renewed');
+                break;
+        }
 
         $contracts = $contracts->get();
-    }
 
-    /*
-    |--------------------------------------------------------------------------
-    | KPIS
-    |--------------------------------------------------------------------------
-    */
+        /*
+        |--------------------------------------------------------------------------
+        | KPIS
+        |--------------------------------------------------------------------------
+        */
 
-    $totalContracts = Contract::count();
+        $kpis = [
 
-    $activeContracts = Contract::where('status', 'active')
-        ->whereDate('end_date', '>=', now())
-        ->count();
+            'total' => Contract::count(),
 
-    $expiredContracts = Contract::whereDate('end_date', '<', now())
-        ->count();
+            'active' => Contract::where(
+                'status',
+                'active'
+            )->count(),
 
-    $expiringSoon = Contract::get()
-        ->filter(function ($contract) {
+            'renewed' => Contract::where(
+                'status',
+                'renewed'
+            )->count(),
 
-            $days = now()
-                ->diffInDays($contract->end_date, false);
+            'notRenewed' => Contract::where(
+                'status',
+                'not_renewed'
+            )->count(),
 
-            return $days <= $contract->renewal_notice_days
-                && $days >= 0;
-        })
-        ->count();
+            'expiring' => Contract::all()
+                ->filter(function ($contract) {
 
-    /*
-    |--------------------------------------------------------------------------
-    | CALENDAR
-    |--------------------------------------------------------------------------
-    */
+                    return $contract->status_label ===
+                        'Próximo a Vencer'
 
-    $calendar = $contracts->map(function ($contract) {
+                        ||
 
-        $days = now()
-            ->diffInDays($contract->end_date, false);
+                        $contract->status_label ===
+                        'Renovación Pendiente'
 
-        $color = '#34c38f';
+                        ||
 
-        if ($days <= $contract->renewal_notice_days) {
-            $color = '#f1b44c';
-        }
+                        $contract->status_label ===
+                        'Vence Hoy';
 
-        if ($days < 0) {
-            $color = '#f46a6a';
-        }
+                })
+                ->count()
+        ];
+
+        /*
+        |--------------------------------------------------------------------------
+        | CALENDAR
+        |--------------------------------------------------------------------------
+        */
+
+        $calendar = Contract::with('provider')
+            ->get()
+            ->map(function ($contract) {
+
+                $color = '#34c38f';
+
+                if (
+                    $contract->status_label === 'Próximo a Vencer'
+                ) {
+                    $color = '#f1b44c';
+                }
+
+                if (
+                    $contract->status_label === 'Vence Hoy'
+                ) {
+                    $color = '#f46a6a';
+                }
+
+                if (
+                    $contract->status === 'not_renewed'
+                ) {
+                    $color = '#f46a6a';
+                }
+
+                return [
+                    'id' => $contract->id,
+                    'title' => $contract->name,
+                    'start' => $contract->end_date->format('Y-m-d'),
+                    'color' => $color
+                ];
+            });
+
+        /*
+        |--------------------------------------------------------------------------
+        | PROVEEDORES
+        |--------------------------------------------------------------------------
+        */
+
+        $providers = Provider::withCount([
+            'contracts as active_count' => function ($q) {
+                $q->where('status', 'active');
+            },
+
+            'contracts as renewed_count' => function ($q) {
+                $q->where('status', 'renewed');
+            },
+
+            'contracts as not_renewed_count' => function ($q) {
+                $q->where('status', 'not_renewed');
+            }
+        ])->get();
+
+        /*
+        |--------------------------------------------------------------------------
+        | PROXIMOS VENCIMIENTOS
+        |--------------------------------------------------------------------------
+        */
+
+        $nextExpirations = Contract::with('provider')
+    ->where('status', 'active')
+    ->get()
+    ->filter(function ($contract) {
+
+        return in_array(
+            $contract->status_label,
+            [
+                'Próximo a Renovar',
+                'Renovación Pendiente',
+                'Próximo a Vencer',
+                'Vence Hoy'
+            ]
+        );
+    })
+    ->sortBy('end_date')
+    ->take(10)
+    ->map(function ($contract) {
 
         return [
-            'title' => $contract->name,
-            'start' => $contract->end_date,
-            'color' => $color,
+            'id' => $contract->id,
+            'name' => $contract->name,
+            'provider' => $contract->provider,
+            'end_date' => $contract->end_date->format('d/m/Y'),
+            'days_remaining' => $contract->days_remaining
         ];
-    });
+    })
+    ->values();
 
-    /*
-    |--------------------------------------------------------------------------
-    | TIMELINE
-    |--------------------------------------------------------------------------
-    */
+            $roots = Contract::with('provider')
+    ->whereNull('previous_contract_id')
+    ->get();
 
-    $providers = $contracts
-        ->groupBy(fn($c) => optional($c->provider)->name ?? 'Sin proveedor')
-        ->map(function ($items, $providerName) {
+$timeline = [];
 
-            return [
-                'provider' => $providerName,
+foreach ($roots as $root) {
 
-                'contracts' => $items
-                    ->sortBy('start_date')
-                    ->map(function ($contract) {
+    $chain = [];
 
-                        $status = 'Activo';
+    $current = $root;
 
-                        if (now()->gt($contract->end_date)) {
-                            $status = 'Vencido';
-                        }
+    while ($current) {
 
-                        if (
-                            now()->gt($contract->end_date)
-                            && !$contract->auto_renewal
-                        ) {
-                            $status = 'No renovado';
-                        }
+        $chain[] = [
 
-                        return [
-                            'name' => $contract->name,
-                            'amount' => $contract->amount,
-                            'currency' => $contract->currency,
-                            'start_date' => $contract->start_date->format('Y-m-d'),
-                            'end_date' => $contract->end_date->format('Y-m-d'),
-                            'status' => $status,
-                        ];
-                    })->values()
-            ];
-        })->values();
+            'id' => $current->id,
+            'name' => $current->name,
+            'currency' => $current->currency,
+            'amount' => $current->amount,
+            'previous_amount' => optional(
+        Contract::find($current->previous_contract_id)
+    )->amount,
+            'status' => $current->status,
+            'start_date' => $current->start_date->format('d/m/Y'),
+            'end_date' => $current->end_date->format('d/m/Y'),
+        ];
 
-    return response()->json([
-        'kpis' => [
-            'total' => $totalContracts,
-            'active' => $activeContracts,
-            'expired' => $expiredContracts,
-            'expiring' => $expiringSoon,
-        ],
+        $current = Contract::where(
+            'previous_contract_id',
+            $current->id
+        )->first();
+    }
 
-        'calendar' => $calendar,
+    $timeline[] = [
 
-        'providersTimeline' => $providers,
-    ]);
+        'provider' => $root->provider->name,
+
+        // nombre de la línea
+        'service' => $root->name,
+
+        'contracts' => $chain
+    ];
 }
+
+        return response()->json([
+
+            'kpis' => $kpis,
+
+            'calendar' => $calendar,
+
+            'providers' => $providers,
+
+            'nextExpirations' => $nextExpirations,
+            'timeline' => $timeline
+        ]);
+    }
 }

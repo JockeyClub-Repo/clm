@@ -53,15 +53,21 @@
                   @enderror
                 </div>
                 <div class="mb-3">
-                  <label for="department_id" class="form-label">Departamento <span class="text-danger">*</span></label>
-                  <select id="department_id" class="form-select" required></select>
+                  <label for="phone" class="form-label">Teléfono</label>
+                  <input type="text" name="phone" id="phone" class="form-control" value="{{ old('phone') }}">
+                  @error('phone')
+                    <span class="text-danger small">{{ $message }}</span>
+                  @enderror
                 </div>
                 <div class="mb-3">
-                  <label for="area_id" class="form-label">Área <span class="text-danger">*</span></label>
-                  <select name="area_id" id="area_id" class="form-select" required></select>
-                    @error('area_id')
-                      <span class="text-danger small">{{ $message }}</span>
-                    @enderror
+                  <label for="receive_notifications" class="form-label">Recibir Notificaciones</label>
+                  <select name="receive_notifications" id="receive_notifications" class="form-select">
+                    <option value="1" {{ old('receive_notifications') == '1' ? 'selected' : '' }}>Si</option>
+                    <option value="0" {{ old('receive_notifications') == '0' ? 'selected' : '' }}>No</option>
+                  </select>
+                  @error('receive_notifications')
+                    <span class="text-danger small">{{ $message }}</span>
+                  @enderror
                 </div>
                 <div class="mb-3">
                   <label for="role" class="form-label">Rol <span class="text-danger">*</span></label>
@@ -69,7 +75,6 @@
                     <option value="">Seleccione...</option>
                     <option value="admin" {{ old('role') == 'admin' ? 'selected' : '' }}>Administrador</option>
                     <option value="agent" {{ old('role') == 'agent' ? 'selected' : '' }}>Agente</option>
-                    <option value="client" {{ old('role') == 'client' ? 'selected' : '' }}>Cliente</option>
                   </select>
                   @error('role')
                     <span class="text-danger small">{{ $message }}</span>
@@ -88,66 +93,4 @@
 @endsection
 
 @push('scripts')
-  <script>
-    $(document).ready(function () {
-      $('#department_id').select2({
-        placeholder: 'Seleccione un departamento',
-        allowClear: true,
-        width: '100%',
-        ajax: {
-          url: '{{ route("departments.data") }}',
-          dataType: 'json',
-          delay: 250,
-          processResults: function (response) {
-            return {
-              results: response.data.map(function (item) {
-                return {
-                  id: item.id,
-                  text: item.name
-                };
-              })
-            };
-          },
-          cache: true
-        }
-      });
-
-      $('#area_id').select2({
-        placeholder: 'Seleccione un área',
-        allowClear: true,
-        width: '100%'
-      });
-
-      $('#department_id').change(function () {
-        let departmentId = $(this).val();
-        $('#area_id').empty().trigger('change');
-        if (!departmentId) { return; }
-        $.ajax({
-          url: `{{ url("departments") }}/${departmentId}/areas`,
-          type: 'GET',
-          success: function (response) {
-            let areas = response.data ?? response;
-            $('#area_id').append(
-              new Option('Seleccione un área', '', false, false)
-            );
-            areas.forEach(function (area) {
-              let option = new Option(
-                  area.name,
-                  area.id,
-                  false,
-                  false
-              );
-              $('#area_id').append(option);
-            });
-            $('#area_id').trigger('change');
-          },
-          error: function () {
-            Swal.fire('Error', 'No se pudieron cargar las áreas.', 'error');
-          }
-        });
-      });
-    });
-
-</script>
-
 @endpush

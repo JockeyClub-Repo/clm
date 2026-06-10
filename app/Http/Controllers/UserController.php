@@ -30,7 +30,7 @@ class UserController extends Controller
   public function data()
   {
     try {
-      return response()->json(['data' => User::with('area.department')->latest()->get()]);
+      return response()->json(['data' => User::latest()->get()]);
     } catch (Exception $e) {
       Log::error('UserController@data -> '. $e->getMessage());
       return response()->json(['data' => []]);
@@ -54,19 +54,20 @@ class UserController extends Controller
     $request->validate([
       'name'          => 'required|string|max:255',
       'email'         => 'required|email|unique:users,email',
+      'phone'         => 'nullable|string|max:20|unique:users,phone',
+      'receive_notifications' => 'boolean',
       'password'      => 'required|string|min:6',
-      'area_id'         => 'required|exists:areas,id',
-      'role'          => ['required', Rule::in(['admin', 'client', 'agent'])],
+      'role'          => ['required', Rule::in(['admin', 'agent'])],
     ]);
     try {
       $user = User::create([
         'name'          => $request->name,
         'email'         => $request->email,
         'password'      => Hash::make($request->password),
-        'area_id'         => $request->area_id,
+        'phone'         => $request->phone,
+        'receive_notifications' => $request->receive_notifications,
         'role'          => $request->role,
       ]);
-      SystemLog::register('users', 'create', 'Se creó el usuario: ' . $user->email);
       return redirect()->route('users.index')->with('success', 'Usuario registrado correctamente.');
     } catch (Exception $e) {
       Log::error('Error en UserController@store: ' . $e->getMessage());
@@ -78,7 +79,6 @@ class UserController extends Controller
   public function edit(User $user)
   {
     try {
-      $user->load('area.department');
       return view('users.edit', compact('user'));
     } catch (Exception $e) {
       Log::error('Error en UserController@edit: ' . $e->getMessage());
@@ -93,20 +93,21 @@ class UserController extends Controller
       'name'          => 'required|string|max:255',
       'email'         => ['required', 'email', Rule::unique('users')->ignore($user->id)],
       'password'      => 'nullable|string|min:6',
-      'area_id' => 'required|exists:areas,id',
+      'phone'         => 'nullable|string|max:20|unique:users,phone,' . $user->id,
+      'receive_notifications' => 'boolean',
       'role'          => ['required', Rule::in(['admin', 'client', 'agent'])],
     ]);
 
     try {
       $user->name          = $request->name;
       $user->email         = $request->email;
-      $user->area_id = $request->area_id;
+      $user->phone         = $request->phone;
+      $user->receive_notifications = $request->receive_notifications;
       $user->role          = $request->role;
 
       if ($request->filled('password')) { $user->password = Hash::make($request->password); }
 
       $user->save();
-      SystemLog::register('users', 'update', 'Se actualizó el usuario ID ' . $user->id);
       return redirect()->route('users.index')->with('success', 'Usuario actualizado correctamente.');
     } catch (Exception $e) {
       Log::error('Error en UserController@update: ' . $e->getMessage());
@@ -119,7 +120,6 @@ class UserController extends Controller
   {
     try {
       $user->delete();
-      SystemLog::register('users', 'delete', 'Se eliminó el usuario ID ' . $user->id);
       return response()->json(['success' => true, 'message' => 'Usuario eliminado correctamente.']);
     } catch (Exception $e) {
       Log::error('Error en UserController@destroy: ' . $e->getMessage());

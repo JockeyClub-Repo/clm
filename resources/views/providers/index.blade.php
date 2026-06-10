@@ -46,6 +46,7 @@
                     <th>Descripción</th>
                     <th>Estado</th>
                     <th>Creación</th>
+                    <th>Actualización</th>
                     <th>Acción</th>
                   </tr>
                 </thead>
@@ -82,6 +83,18 @@
           }
         },
         { data: 'created_at',
+          render: function (data) {
+            let fecha = new Date(data);
+            return fecha.toLocaleString('es-PE', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+          }
+        },
+        { data: 'updated_at',
           render: function (data) {
             let fecha = new Date(data);
             return fecha.toLocaleString('es-PE', {

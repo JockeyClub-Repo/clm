@@ -46,14 +46,16 @@ return new class extends Migration
 
             $table->enum('status', [
                 'active',
-                'expired',
-                'cancelled'
+                'renewed',
+                'not_renewed'
             ])->default('active');
 
             $table->foreignId('created_by')
                 ->nullable()
                 ->constrained('users')
                 ->nullOnDelete();
+
+                
 
             $table->timestamps();
 

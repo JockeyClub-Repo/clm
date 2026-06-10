@@ -44,8 +44,8 @@
                     <th>Nombre</th>
                     <th>Email</th>
                     <th>Rol</th>
-                    <th>Departamento</th>
-                    <th>Area</th>
+                    <th>Teléfono</th>
+                    <th>Notificaciones</th>
                     <th>Creación</th>
                     <th>Actualización</th>
                     <th>Acción</th>
@@ -82,12 +82,19 @@ $(document).ready(function () {
             }
           },
           {
-            data: 'area.department.name',
-            defaultContent: 'N/A'
+            data: 'phone',
+            render: function (data) {
+              return data ? data : '-';
+            }
           },
-          {
-            data: 'area.name',
-            defaultContent: 'N/A'
+          { data: 'receive_notifications',
+            render: function (data) {
+              if (data === true || data === '1' || data === 1) {
+                return `<span class="badge bg-success">Si</span>`
+              } else {
+                return `<span class="badge bg-danger">No</span>`
+              }
+            }
           },
           { data: 'created_at',
             render: function (data) {

@@ -21,22 +21,27 @@ class ProviderController extends Controller
   }
 
    /* Lista de proveedores*/
-  public function data()
+  public function data(Request $request)
   {
-    try {
-      return response()->json([
-        'data' => Provider::with('contracts')->latest()->get()
-      ]);
-    } catch (Exception $e) {
-      Log::error('ProviderController@data -> ' . $e->getMessage());
-      return response()->json(['data' => []]);
+    $term = $request->term;
+    $query = Provider::query();
+    if (!empty($term)) {
+      $query->where('name', 'like', "%{$term}%")->orWhere('ruc', 'like', "%{$term}%");
     }
+    return response()->json([
+        'data' => $query->orderBy('name')->get()
+    ]);
   }
 
   /* Muestra el formulario de creación. */
   public function create()
   {
-    return view('providers.create');
+    try {
+      return view('providers.create');
+    } catch (Exception $e) {
+      Log::error('Error en ProviderController@create: ' . $e->getMessage());
+      return redirect()->route('providers.index')->with('error', 'Error al cargar el formulario.');
+    }
   }
 
   /* Almacena una nueva area. */
@@ -48,7 +53,7 @@ class ProviderController extends Controller
     ]);
 
     try {
-      $area = Provider::create([
+      $provider = Provider::create([
         'ruc' => $request->ruc,
         'name' => $request->name,
         'description' => $request->description,
@@ -65,51 +70,48 @@ class ProviderController extends Controller
   public function edit($id)
   {
     try {
-      $area = Area::findOrFail($id);
-      return view('areas.edit', compact('area'));
+      $provider = Provider::findOrFail($id);
+      return view('providers.edit', compact('provider'));
     } catch (\Exception $e) {
       Log::error('Error al cargar formulario de edición: ' . $e->getMessage());
-      return redirect()->route('areas.index')->with('error', 'Área no encontrada.');
+      return redirect()->route('providers.index')->with('error', 'Proveedor no encontrado.');
     }
   }
 
-  /* Actualiza un area existente. */
+  /* Actualiza un proveedor existente. */
   public function update(Request $request, $id)
   {
     $request->validate([
-      'name' => 'required|string|max:255|unique:areas,name,' . $id,
-      'department_id' => 'required|exists:departments,id',
+      'name' => 'required|string|max:255|unique:providers,name,' . $id,
+      'ruc' => 'required|digits:11|unique:providers,ruc,' . $id,
     ]);
 
     try {
-      $area = Area::findOrFail($id);
-      $area->update([
+      $provider = Provider::findOrFail($id);
+      $provider->update([
         'name' => $request->name,
-        'department_id' => $request->department_id,
+        'ruc' => $request->ruc,
+        'description' => $request->description,
       ]);
 
-      // Registrar en system_logs
-      SystemLog::register('area', 'update', 'Se actualizó el área ID ' . $area->id);
-      return redirect()->route('areas.index')->with('success', 'Área actualizada correctamente.');
+      return redirect()->route('providers.index')->with('success', 'Proveedor actualizado correctamente.');
     } catch (\Exception $e) {
-      Log::error('Error al actualizar área: ' . $e->getMessage());
-      return redirect()->back()->with('error', 'Ocurrió un error al actualizar el área.');
+      Log::error('Error al actualizar proveedor: ' . $e->getMessage());
+      return redirect()->back()->with('error', 'Ocurrió un error al actualizar el proveedor.');
     }
   }
 
-  /* Elimina un area. */
+  /* Elimina un proveedor. */
   public function destroy($id)
   {
     try {
-      $area = Area::findOrFail($id);
-      $area->delete();
+      $provider = Provider::findOrFail($id);
+      $provider->delete();
 
-      // Registrar en system_logs
-      SystemLog::register('area', 'delete', 'Se eliminó la área ID ' . $area->id);
-      return response()->json(['success' => true, 'message' => 'Área eliminada correctamente.']);
+      return response()->json(['success' => true, 'message' => 'Proveedor eliminado correctamente.']);
     } catch (\Exception $e) {
-      Log::error('Error al eliminar área: ' . $e->getMessage());
-      return response()->json(['success' => false, 'message' => 'Error al eliminar el área.']);
+      Log::error('Error al eliminar proveedor: ' . $e->getMessage());
+      return response()->json(['success' => false, 'message' => 'Error al eliminar el proveedor.']);
     }
   }
 }

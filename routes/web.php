@@ -3,6 +3,7 @@
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ContractController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\DashboardController;
 
@@ -13,11 +14,7 @@ Route::get('/', function () { return view('welcome'); });
 Route::middleware('auth')->group(function () {
   // Dashboard
   Route::get('/dashboard', [DashboardController::class, 'dashboardRouter'])->name('dashboard');
-  Route::get('/dashboard/stats', [DashboardDataController::class, 'stats']);
-  Route::get('/dashboard/calendar', [DashboardDataController::class, 'calendar']);
-  Route::get('/dashboard/timeline', [DashboardDataController::class, 'timeline']);
-  Route::get('/dashboard/expiring-contracts', [DashboardDataController::class, 'expiringContracts']);
-  Route::get('/dashboard/charts', [DashboardDataController::class, 'charts']);
+  Route::get('/dashboard/data', [DashboardController::class, 'adminData'])->name('dashboard.data');
   // Notificaciones
   Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
   Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
@@ -33,6 +30,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
   Route::resource('providers', ProviderController::class);
   // Contratos
   Route::get('/contracts/data', [ContractController::class, 'data'])->name('contracts.data');
+  Route::post('/contracts/{id}/renew', [ContractController::class, 'renew'])->name('contracts.renew');
+  Route::post('/contracts/{id}/not-renew', [ContractController::class, 'notRenew'])->name('contracts.not-renew');
   Route::resource('contracts', ContractController::class);
 });
 
