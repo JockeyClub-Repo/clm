@@ -22,40 +22,63 @@
           </div>
         </div>
       </div>
-      <div class="row">
-        <div class="col-md-3">
-          <div class="card bg-primary text-white">
-            <div class="card-body text-center ">
-              <h2 id="kpi-total" class="text-white">0</h2>
-              <small>Total Contratos</small>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card bg-success text-white">
+      <div class="row mb-4">
+
+    <div class="col-md-2">
+        <div class="card bg-primary text-white kpi-card" data-filter="">
             <div class="card-body text-center">
-              <h2 id="kpi-active" class="text-white">0</h2>
-              <small>Activos</small>
+                <h2 id="kpi-total" class="text-white">0</h2>
+                <small>Total Contratos</small>
             </div>
-          </div>
         </div>
-        <div class="col-md-3">
-          <div class="card bg-info text-white">
+    </div>
+
+    <div class="col-md-2">
+        <div class="card bg-success text-white kpi-card" data-filter="active">
             <div class="card-body text-center">
-              <h2 id="kpi-renewed" class="text-white">0</h2>
-              <small>Renovados</small>
+                <h2 id="kpi-active" class="text-white">0</h2>
+                <small>Activos</small>
             </div>
-          </div>
         </div>
-        <div class="col-md-3">
-          <div class="card bg-danger text-white">
+    </div>
+
+    <div class="col-md-2">
+        <div class="card bg-info text-white kpi-card" data-filter="renewed">
             <div class="card-body text-center">
-              <h2 id="kpi-not-renewed" class="text-white">0</h2>
-              <small>No Renovados</small>
+                <h2 id="kpi-renewed" class="text-white">0</h2>
+                <small>Renovados</small>
             </div>
-          </div>
         </div>
-      </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card bg-danger text-white kpi-card" data-filter="not_renewed">
+            <div class="card-body text-center">
+                <h2 id="kpi-not-renewed" class="text-white">0</h2>
+                <small>No Renovados</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card bg-warning text-white kpi-card" data-filter="expiring">
+            <div class="card-body text-center">
+                <h2 id="kpi-expiring" class="text-white">0</h2>
+                <small>Por Vencer</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-2">
+        <div class="card bg-danger text-white kpi-card" data-filter="expired">
+            <div class="card-body text-center">
+                <h2 id="kpi-expired" class="text-white">0</h2>
+                <small>Vencidos</small>
+            </div>
+        </div>
+    </div>
+
+</div>
       <div class="row">
         <div class="col-lg-3">
           <div class="card">
@@ -130,9 +153,11 @@ $(function () {
 
     loadDashboard();
 
-    $('#filterStatus').change(function () {
+    $('.kpi-card').click(function () {
 
-        loadDashboard($(this).val());
+        let filter = $(this).data('filter');
+
+        loadDashboard(filter);
 
     });
 
@@ -154,6 +179,8 @@ function loadDashboard(filter = '')
             $('#kpi-active').text(response.kpis.active);
             $('#kpi-renewed').text(response.kpis.renewed);
             $('#kpi-not-renewed').text(response.kpis.notRenewed);
+            $('#kpi-expiring').text(response.kpis.expiring);
+$('#kpi-expired').text(response.kpis.expired);
             renderChart(response.kpis);
 renderTimeline(response.timeline);
 
@@ -243,23 +270,26 @@ function renderTimeline(timeline)
         group.contracts.forEach((contract,index)=>{
 
     let statusText = '';
-
-    if(contract.status === 'active')
-    {
-        statusText = 'Activo';
-    }
-    else if(contract.status === 'renewed')
-    {
-        statusText = 'Renovado';
-    }
-    else if(contract.status === 'not_renewed')
-    {
-        statusText = 'No Renovado';
-    }
-    else
-    {
-        statusText = contract.status;
-    }
+if(contract.status_label)
+{
+    statusText = contract.status_label;
+}
+else if(contract.status === 'active')
+{
+    statusText = 'Activo';
+}
+else if(contract.status === 'renewed')
+{
+    statusText = 'Renovado';
+}
+else if(contract.status === 'not_renewed')
+{
+    statusText = 'No Renovado';
+}
+else
+{
+    statusText = contract.status;
+}
 
 let arrowColor = '#6c757d';
 

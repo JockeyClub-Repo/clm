@@ -22,66 +22,84 @@ class DashboardController extends Controller
 
         switch ($filter) {
 
-            case 'active':
-                $contracts->where('status', 'active');
-                break;
+    case 'active':
+        $contracts->where('status', 'active');
+        break;
 
-            case 'renewed':
-                $contracts->where('status', 'renewed');
-                break;
+    case 'renewed':
+        $contracts->where('status', 'renewed');
+        break;
 
-            case 'not_renewed':
-                $contracts->where('status', 'not_renewed');
-                break;
-        }
+    case 'not_renewed':
+        $contracts->where('status', 'not_renewed');
+        break;
+
+    case 'expiring':
+        $contracts->where('status', 'active');
+        break;
+
+    case 'expired':
+        break;
+}
 
         $contracts = $contracts->get();
+        $today = Carbon::today();
+
+if ($filter == 'expiring') {
+    $contracts = $contracts->filter(function ($c) use ($today) {
+        return $c->end_date >= $today
+            && $c->end_date <= $today->copy()->addDays(30);
+    })->values();
+}
+
+if ($filter == 'expired') {
+    $contracts = $contracts->filter(function ($c) use ($today) {
+        return $c->end_date < $today;
+    })->values();
+}
 
         /*
         |--------------------------------------------------------------------------
         | KPIS
         |--------------------------------------------------------------------------
         */
+        $allContracts = Contract::all();
 
-        $kpis = [
+        $today = Carbon::today();
 
-            'total' => Contract::count(),
+$kpis = [
 
-            'active' => Contract::where(
-                'status',
-                'active'
-            )->count(),
+    'total' => $allContracts->count(),
 
-            'renewed' => Contract::where(
-                'status',
-                'renewed'
-            )->count(),
+    'active' => $allContracts
+        ->where('status', 'active')
+        ->filter(function ($c) use ($today) {
+            return $c->end_date >= $today;
+        })
+        ->count(),
 
-            'notRenewed' => Contract::where(
-                'status',
-                'not_renewed'
-            )->count(),
+    'renewed' => $allContracts
+        ->where('status', 'renewed')
+        ->count(),
 
-            'expiring' => Contract::all()
-                ->filter(function ($contract) {
+    'notRenewed' => $allContracts
+        ->where('status', 'not_renewed')
+        ->count(),
 
-                    return $contract->status_label ===
-                        'Próximo a Vencer'
+    'expiring' => $allContracts
+        ->where('status', 'active')
+        ->filter(function ($c) use ($today) {
+            return $c->end_date >= $today
+                && $c->end_date <= $today->copy()->addDays(30);
+        })
+        ->count(),
 
-                        ||
-
-                        $contract->status_label ===
-                        'Renovación Pendiente'
-
-                        ||
-
-                        $contract->status_label ===
-                        'Vence Hoy';
-
-                })
-                ->count()
-        ];
-
+    'expired' => $allContracts
+        ->filter(function ($c) use ($today) {
+            return $c->end_date < $today;
+        })
+        ->count(),
+];
         /*
         |--------------------------------------------------------------------------
         | CALENDAR
@@ -175,19 +193,17 @@ class DashboardController extends Controller
     })
     ->values();
 
-            $roots = Contract::with('provider')
-    ->whereNull('previous_contract_id')
-    ->get();
-
 $timeline = [];
 
-foreach ($roots as $root) {
+$grouped = $contracts->groupBy('provider_id');
+
+foreach ($grouped as $providerId => $items) {
+
+    $provider = Provider::find($providerId);
 
     $chain = [];
 
-    $current = $root;
-
-    while ($current) {
+    foreach ($items as $current) {
 
         $chain[] = [
 
@@ -196,30 +212,22 @@ foreach ($roots as $root) {
             'currency' => $current->currency,
             'amount' => $current->amount,
             'previous_amount' => optional(
-        Contract::find($current->previous_contract_id)
-    )->amount,
+                Contract::find($current->previous_contract_id)
+            )->amount,
             'status' => $current->status,
+            'status_label' => $current->status_label,
             'start_date' => $current->start_date->format('d/m/Y'),
             'end_date' => $current->end_date->format('d/m/Y'),
         ];
-
-        $current = Contract::where(
-            'previous_contract_id',
-            $current->id
-        )->first();
     }
 
     $timeline[] = [
 
-        'provider' => $root->provider->name,
-
-        // nombre de la línea
-        'service' => $root->name,
-
+        'provider' => $provider ? $provider->name : 'Sin proveedor',
+        'service' => '',
         'contracts' => $chain
     ];
 }
-
         return response()->json([
 
             'kpis' => $kpis,
