@@ -1,7 +1,6 @@
 @extends('layouts.app')
 
 @section('title', 'Mantenimiento de Contratos')
-
 @section('content')
 <div class="page-content">
   <div class="container-fluid">
@@ -38,8 +37,7 @@
               <button class="btn btn-sm btn-success" id="btnRefresh"><i class="ri-refresh-line"></i> Recargar</button>
             </div>
             <div class="table-responsive">
-              <table id="contracts-table" class="table table-bordered table-striped" style="width:100%">
-                <thead>
+<table id="contracts-table" class="table table-bordered table-striped table-sm align-middle" style="width:100%">                <thead>
                   <tr>
                     <th>Contrato</th>
                     <th>Descripción</th>
@@ -51,6 +49,7 @@
                     <th style=" white-space: nowrap">Días restantes</th> 
                     <th>Fin</th>
                     <th>Estado</th>
+                    <th style="white-space: nowrap">PDF / IMG</th>
                     <th style=" white-space: nowrap">Estado Contrato</th>
                     <th>Acciones</th>
                   </tr>
@@ -153,11 +152,20 @@
     });
 
     let table = $('#contracts-table').DataTable({
-      processing: true,
-      ajax: '{{ route("contracts.data") }}',
-      responsive: false,
-      scrollX: true,
-      autoWidth: false,
+    processing: true,
+    ajax: '{{ route("contracts.data") }}',
+    responsive: false,
+    scrollX: true,
+    scrollCollapse: true,
+    autoWidth: false,
+
+    columnDefs: [
+        { targets: 9, width: '90px', className: 'text-center' },   // Estado
+        { targets: 10, width: '80px', className: 'text-center' },  // PDF / IMG
+        { targets: 11, width: '140px', className: 'text-center' }, // Estado Contrato
+        { targets: 12, width: '180px', className: 'text-center' }  // Acciones
+    ],
+    
       columns: [
         { data: 'name' },
         { data: 'description'},
@@ -213,8 +221,37 @@
           data: 'status_badge',
           orderable: false,
           searchable: false
-        },
-        {
+          },
+{
+  data: 'files',
+  orderable: false,
+  searchable: false,
+  render: function (data) {
+
+    if (!data || data.length === 0) {
+      return `<span class="badge bg-secondary">S/A</span>`;
+    }
+
+    let html = '';
+
+    data.forEach(function(file) {
+      let fileName = file.file_name ?? '';
+      let filePath = file.file_path ?? '';
+
+      let ext = fileName.split('.').pop().toLowerCase();
+      let url = `/storage/${filePath}`;
+
+      if (ext === 'pdf') {
+        html += `<a href="${url}" target="_blank" class="badge bg-danger me-1">PDF</a>`;
+      } else {
+        html += `<a href="${url}" target="_blank" class="badge bg-info me-1">IMG</a>`;
+      }
+    });
+
+    return html;
+  }
+},
+{
           data: 'status',
           render: function (data) {
             if(data === 'active') {

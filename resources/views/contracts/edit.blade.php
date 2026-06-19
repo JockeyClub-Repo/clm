@@ -29,8 +29,8 @@
         <div class="card">
           <div class="container mt-4 mb-4">
             <a href="{{ route('contracts.index') }}" class="btn btn-sm btn-primary mb-3">Volver al Listado</a>
-            <form action="{{ route('contracts.update', $contract->id) }}" method="POST">
-              @csrf
+<form action="{{ route('contracts.update', $contract->id) }}" method="POST" enctype="multipart/form-data">
+            @csrf
               @method('PUT')
                 <div class="row">
                   <div class="col-md-6 mb-3">
@@ -105,12 +105,27 @@
                   </div>
                 </div>
                 <div class="mb-3">
-                  <label for="description" class="form-label">Descripción</label>
-                  <textarea name="description" id="description" class="form-control" rows="3">{{ old('description', $contract->description) }}</textarea>
-                  @error('description')
-                    <span class="text-danger small">{{ $message }}</span>
-                  @enderror
-                </div>
+  <label for="description" class="form-label">Descripción</label>
+  <textarea name="description" id="description" class="form-control" rows="3">{{ old('description', $contract->description) }}</textarea>
+  @error('description')
+    <span class="text-danger small">{{ $message }}</span>
+  @enderror
+</div>
+
+<div class="mb-3">
+  <label for="archivo" class="form-label">PDF / Imagen</label>
+
+  <input
+    type="file"
+    name="archivo"
+    id="archivo"
+    class="form-control"
+    accept=".pdf,.jpg,.jpeg,.png">
+
+  @error('archivo')
+    <span class="text-danger small">{{ $message }}</span>
+  @enderror
+</div>
               <div class="text-end">
                 <button type="submit" class="btn btn-sm btn-warning">Actualizar</button>
               </div>

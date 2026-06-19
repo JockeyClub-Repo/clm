@@ -12,22 +12,22 @@ use Illuminate\Support\Facades\DB;
 class ContractController extends Controller
 {
   /* Pagina de contratos*/
-  public function index()
-  {
-    try {
-      return view('contracts.index');
-    } catch (Exception $e) {
-      Log::error('Error en ContractController@index: ' . $e->getMessage());
-      return redirect()->back()->with('error', 'Error al cargar los contratos.');
-    }
+public function index()
+{
+  try {
+    return view('contracts.index');
+  } catch (\Exception $e) {
+    Log::error('Error en ContractController@index: ' . $e->getMessage());
+    return redirect()->back()->with('error', 'Error al cargar los contratos.');
   }
+}
 
    /* Lista de proveedores*/
     public function data()
 {
     try {
 
-        $contracts = Contract::with('provider')->get();
+$contracts = Contract::with(['provider', 'files'])->get();
 
         $contracts->each(function ($contract) {
 
@@ -69,15 +69,15 @@ class ContractController extends Controller
 }
 
   /* Muestra el formulario de creación. */
-  public function create()
-  {
-    try {
-      return view('contracts.create');
-    } catch (Exception $e) {
-      Log::error('Error en ContractController@create: ' . $e->getMessage());
-      return redirect()->route('contracts.index')->with('error', 'Error al cargar el formulario.');
-    }
+public function create()
+{
+  try {
+    return view('contracts.create');
+  } catch (\Exception $e) {
+    Log::error('Error en ContractController@create: ' . $e->getMessage());
+    return redirect()->route('contracts.index')->with('error', 'Error al cargar el formulario.');
   }
+}
 
   /* Almacena una nueva area. */
   public function store(Request $request)
@@ -121,7 +121,7 @@ class ContractController extends Controller
   public function edit($id)
   {
     try {
-      $contract = Contract::findOrFail($id);
+$contract = Contract::with('files')->findOrFail($id);
       return view('contracts.edit', compact('contract'));
     } catch (\Exception $e) {
       Log::error('Error al cargar formulario de edición: ' . $e->getMessage());
@@ -143,6 +143,7 @@ class ContractController extends Controller
       'auto_renewal' => 'boolean',
       'messaging_enabled' => 'boolean',
       'description' => 'nullable|string',
+      'archivo' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
     ]);
 
     try {
@@ -158,7 +159,21 @@ class ContractController extends Controller
         'auto_renewal' => $request->auto_renewal ?? false,
         'messaging_enabled' => $request->messaging_enabled ?? false,
         'description' => $request->description,
+        
       ]);
+      if ($request->hasFile('archivo')) {
+  $file = $request->file('archivo');
+
+  $path = $file->store('contracts', 'public');
+
+  $contract->files()->create([
+    'file_name'   => $file->getClientOriginalName(),
+    'file_path'   => $path,
+    'file_size'   => $file->getSize(),
+    'mime_type'   => $file->getMimeType(),
+    'uploaded_by' => Auth::id(),
+  ]);
+}
 
       return redirect()->route('contracts.index')->with('success', 'Contrato actualizado correctamente.');
     } catch (\Exception $e) {
