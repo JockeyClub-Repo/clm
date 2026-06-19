@@ -239,8 +239,8 @@
       let filePath = file.file_path ?? '';
 
       let ext = fileName.split('.').pop().toLowerCase();
-      let url = `/storage/${filePath}`;
-
+let baseStorageUrl = "{{ asset('storage') }}";
+let url = `${baseStorageUrl}/${filePath}`;
       if (ext === 'pdf') {
         html += `<a href="${url}" target="_blank" class="badge bg-danger me-1">PDF</a>`;
       } else {
