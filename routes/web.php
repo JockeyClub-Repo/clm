@@ -30,6 +30,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
   Route::resource('providers', ProviderController::class);
   // Contratos
   Route::get('/contracts/data', [ContractController::class, 'data'])->name('contracts.data');
+  Route::delete('/contract-files/{id}', [ContractController::class, 'deleteFile'])
+    ->name('contracts.file.delete');
   Route::post('/contracts/{id}/renew', [ContractController::class, 'renew'])->name('contracts.renew');
   Route::post('/contracts/{id}/not-renew', [ContractController::class, 'notRenew'])->name('contracts.not-renew');
   Route::resource('contracts', ContractController::class);

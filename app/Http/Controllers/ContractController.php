@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use App\Models\ContractFile;
+use Illuminate\Support\Facades\Storage;
 
 class ContractController extends Controller
 {
@@ -249,5 +251,33 @@ $contract = Contract::with('files')->findOrFail($id);
       'message' => 'Contrato marcado como no renovado.'
     ]);
   }
+  public function deleteFile($id)
+{
+    try {
+
+        $file = ContractFile::findOrFail($id);
+
+        if ($file->file_path &&
+            Storage::disk('public')->exists($file->file_path)) {
+
+            Storage::disk('public')->delete($file->file_path);
+        }
+
+        $file->delete();
+
+        return response()->json([
+            'success' => true
+        ]);
+
+    } catch (\Exception $e) {
+
+        \Log::error($e->getMessage());
+
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
 
 }

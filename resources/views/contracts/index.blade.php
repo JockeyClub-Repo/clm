@@ -242,10 +242,29 @@
 let baseStorageUrl = "{{ asset('storage') }}";
 let url = `${baseStorageUrl}/${filePath}`;
       if (ext === 'pdf') {
-        html += `<a href="${url}" target="_blank" class="badge bg-danger me-1">PDF</a>`;
-      } else {
-        html += `<a href="${url}" target="_blank" class="badge bg-info me-1">IMG</a>`;
-      }
+
+    html += `
+        <a href="${url}" target="_blank" class="badge bg-danger me-1">PDF</a>
+
+        <button
+            class="btn btn-outline-danger btn-sm delete-file"
+            data-id="${file.id}">
+            🗑️
+        </button>
+    `;
+
+} else {
+
+    html += `
+        <a href="${url}" target="_blank" class="badge bg-info me-1">IMG</a>
+
+        <button
+            class="btn btn-outline-danger btn-sm delete-file"
+            data-id="${file.id}">
+            🗑️
+        </button>
+    `;
+}
     });
 
     return html;
@@ -305,6 +324,56 @@ let url = `${baseStorageUrl}/${filePath}`;
     $('#btnRefresh').click(function () {
       table.ajax.reload(null, false);
     });
+
+  $(document).on('click', '.delete-file', function () {
+
+    let id = $(this).data('id');
+
+    Swal.fire({
+        title: '¿Eliminar archivo?',
+        text: 'Esta acción no se puede deshacer.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+
+        if (result.isConfirmed) {
+
+            $.ajax({
+
+                url: '/contract-files/' + id,
+                type: 'DELETE',
+
+                data: {
+                    _token: '{{ csrf_token() }}'
+                },
+
+                success: function () {
+
+                    Swal.fire(
+                        'Eliminado',
+                        'Archivo eliminado correctamente',
+                        'success'
+                    );
+
+                    table.ajax.reload();
+                },
+
+                error: function (xhr) {
+
+                    console.log(xhr.responseText);
+
+                    Swal.fire(
+                        'Error',
+                        'No se pudo eliminar el archivo',
+                        'error'
+                    );
+                }
+            });
+        }
+    });
+});
 
     // Eliminar contrato
     $(document).on('click', '.btn-delete', function () {
