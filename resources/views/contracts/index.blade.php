@@ -303,14 +303,28 @@ let url = `${baseStorageUrl}/${filePath}`;
               `;
             }
             return `
-              <div class="d-flex gap-1 flex-wrap">
-                <a href="${editUrl}" class="btn btn-warning btn-sm">Editar</a>
-                ${renewButtons}
-                <button class="btn btn-danger btn-sm btn-delete" data-id="${row.id}">
-                  Eliminar
-                </button>
-              </div>
-            `;
+  <div class="d-flex gap-1 flex-wrap">
+
+    <a href="${editUrl}" class="btn btn-warning btn-sm">
+      Editar
+    </a>
+
+    <a href="/contracts/${row.id}/pdf"
+       target="_blank"
+       class="btn btn-danger btn-sm">
+       PDF
+    </a>
+
+    ${renewButtons}
+
+    <button
+        class="btn btn-danger btn-sm btn-delete"
+        data-id="${row.id}">
+        Eliminar
+    </button>
+
+  </div>
+`;
           }
         }
       ],
@@ -374,6 +388,7 @@ let url = `${baseStorageUrl}/${filePath}`;
         }
     });
 });
+
 
     // Eliminar contrato
     $(document).on('click', '.btn-delete', function () {

@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\ContractFile;
 use Illuminate\Support\Facades\Storage;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ContractController extends Controller
 {
@@ -278,6 +279,125 @@ $contract = Contract::with('files')->findOrFail($id);
         'message' => $e->getMessage()
     ], 500);
 }
+}
+
+public function pdf($id)
+{
+    try {
+        $contract = Contract::with(['provider', 'files'])->findOrFail($id);
+
+        $html = '
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #333; }
+                h1 { text-align: center; color: #0d6efd; margin-bottom: 5px; }
+                h2 { text-align: center; color: #555; font-size: 15px; margin-top: 0; }
+                h3 { background: #0d6efd; color: white; padding: 8px; margin-top: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+                th, td { border: 1px solid #ccc; padding: 8px; }
+                th { background: #f2f2f2; text-align: left; width: 30%; }
+                .resumen { background: #eef5ff; border: 1px solid #0d6efd; padding: 10px; margin-top: 10px; }
+                .footer { position: fixed; bottom: 10px; text-align: center; font-size: 10px; color: #777; width: 100%; }
+                .firma { width: 30%; display: inline-block; text-align: center; margin-top: 70px; }
+                .linea { border-top: 1px solid #000; margin-bottom: 5px; }
+            </style>
+        </head>
+        <body>
+
+            <h3>1. Información General</h3>
+            <table>
+                <tr><th>Contrato</th><td>' . e($contract->name) . '</td></tr>
+                <tr><th>Proveedor</th><td>' . e($contract->provider->name ?? '-') . '</td></tr>
+                <tr><th>Estado</th><td>' . e($contract->status_label ?? '-') . '</td></tr>
+                <tr><th>Moneda</th><td>' . e($contract->currency) . '</td></tr>
+                <tr><th>Monto</th><td>' . number_format($contract->amount, 2) . '</td></tr>
+                <tr><th>Fecha Inicio</th><td>' . e($contract->start_date) . '</td></tr>
+                <tr><th>Fecha Fin</th><td>' . e($contract->end_date) . '</td></tr>
+                <tr><th>Renovación Automática</th><td>' . ($contract->auto_renewal ? 'SI' : 'NO') . '</td></tr>
+                <tr><th>Aviso Renovación</th><td>' . e($contract->renewal_notice_days) . ' días antes</td></tr>
+            </table>
+
+            <h3>2. Descripción</h3>
+            <table>
+                <tr><td>' . e($contract->description ?? 'Sin descripción') . '</td></tr>
+            </table>
+
+            <h3>3. Documentos Adjuntos</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Archivo</th>
+                        <th>Tamaño</th>
+                        <th>Tipo</th>
+                    </tr>
+                </thead>
+                <tbody>';
+
+        if ($contract->files->count() > 0) {
+            foreach ($contract->files as $file) {
+                $html .= '
+                    <tr>
+                        <td>' . e($file->file_name) . '</td>
+                        <td>' . number_format($file->file_size / 1024, 2) . ' KB</td>
+                        <td>' . e($file->mime_type) . '</td>
+                    </tr>';
+            }
+        } else {
+            $html .= '
+                    <tr>
+                        <td colspan="3">No existen archivos adjuntos.</td>
+                    </tr>';
+        }
+
+        $html .= '
+                </tbody>
+            </table>
+
+            <h3>4. Resumen Ejecutivo</h3>
+            <div class="resumen">
+                <strong>Estado:</strong> ' . e($contract->status_label ?? '-') . '<br>
+                <strong>Proveedor:</strong> ' . e($contract->provider->name ?? '-') . '<br>
+                <strong>Monto:</strong> ' . e($contract->currency) . ' ' . number_format($contract->amount, 2) . '<br>
+                <strong>Fecha de vencimiento:</strong> ' . e($contract->end_date) . '
+            </div>
+
+            <h3>5. Firmas</h3>
+
+            <div class="firma">
+                <div class="linea"></div>
+                Administrador
+            </div>
+
+            <div class="firma">
+                <div class="linea"></div>
+                Proveedor
+            </div>
+
+            <div class="firma">
+                <div class="linea"></div>
+                Gerencia
+            </div>
+
+            <div class="footer">
+                ITELCA PERÚ | Documento generado automáticamente el ' . date('d/m/Y H:i') . '
+            </div>
+
+        </body>
+        </html>';
+
+        $pdf = Pdf::loadHTML($html)->setPaper('a4', 'portrait');
+
+        return $pdf->stream('contrato-' . $contract->id . '.pdf');
+
+    } catch (\Exception $e) {
+        Log::error('Error al generar PDF: ' . $e->getMessage());
+
+        return redirect()
+            ->route('contracts.index')
+            ->with('error', 'Error al generar el PDF.');
+    }
 }
 
 }

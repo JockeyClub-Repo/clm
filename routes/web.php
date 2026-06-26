@@ -35,6 +35,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     ->name('contracts.file.delete');
   Route::post('/contracts/{id}/renew', [ContractController::class, 'renew'])->name('contracts.renew');
   Route::post('/contracts/{id}/not-renew', [ContractController::class, 'notRenew'])->name('contracts.not-renew');
+  Route::get('/contracts/{id}/pdf', [ContractController::class, 'pdf'])
+    ->name('contracts.pdf');
   Route::resource('contracts', ContractController::class);
 });
 
