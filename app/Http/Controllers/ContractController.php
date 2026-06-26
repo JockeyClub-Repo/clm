@@ -271,13 +271,13 @@ $contract = Contract::with('files')->findOrFail($id);
 
     } catch (\Exception $e) {
 
-        \Log::error($e->getMessage());
+    Log::error($e->getMessage());
 
-        return response()->json([
-            'success' => false,
-            'message' => $e->getMessage()
-        ], 500);
-    }
+    return response()->json([
+        'success' => false,
+        'message' => $e->getMessage()
+    ], 500);
+}
 }
 
 }
