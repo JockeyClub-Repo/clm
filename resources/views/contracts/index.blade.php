@@ -32,6 +32,54 @@
       <div class="col-lg-12">
         <div class="card">
           <div class="card-body">
+            <div class="row mb-3" id="dashboardContratos">
+  <div class="col-md-3">
+    <div class="card border-primary shadow-sm">
+      <div class="card-body text-center">
+        <h6>Total Contratos</h6>
+        <h3 id="kpiTotal">0</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-success shadow-sm">
+      <div class="card-body text-center">
+        <h6>Vigentes</h6>
+        <h3 id="kpiVigentes">0</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-warning shadow-sm">
+      <div class="card-body text-center">
+        <h6>Por Vencer</h6>
+        <h3 id="kpiPorVencer">0</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-danger shadow-sm">
+      <div class="card-body text-center">
+        <h6>Vencidos</h6>
+        <h3 id="kpiVencidos">0</h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mb-3">
+  <div class="col-md-12">
+    <div class="card bg-light shadow-sm">
+      <div class="card-body text-center">
+        <h6>Monto Total Contratado</h6>
+        <h3 id="kpiMontoTotal">0.00</h3>
+      </div>
+    </div>
+  </div>
+</div>
             <div class="d-flex justify-content-between align-items-center mb-3">
               <a href="{{ route('contracts.create') }}" class="btn btn-sm btn-primary">Nuevo Registro</a>
               <button class="btn btn-sm btn-success" id="btnRefresh"><i class="ri-refresh-line"></i> Recargar</button>
@@ -118,6 +166,45 @@
 @push('scripts')
   <script>
   $(document).ready(function () {
+    function actualizarDashboardContratos(data) {
+    let total = data.length;
+    let vigentes = 0;
+    let porVencer = 0;
+    let vencidos = 0;
+    let montoTotal = 0;
+
+    data.forEach(function (item) {
+        let estado = item.status_label ?? '';
+        let monto = parseFloat(item.amount ?? 0);
+
+        montoTotal += monto;
+
+        if (estado === 'Vigente') {
+            vigentes++;
+        } else if (
+            estado === 'Próximo a Vencer' ||
+            estado === 'Próximo a Renovar' ||
+            estado === 'Renovación Pendiente' ||
+            estado === 'Vence Hoy'
+        ) {
+            porVencer++;
+        } else if (estado === 'Vencido') {
+            vencidos++;
+        }
+    });
+
+    $('#kpiTotal').text(total);
+    $('#kpiVigentes').text(vigentes);
+    $('#kpiPorVencer').text(porVencer);
+    $('#kpiVencidos').text(vencidos);
+
+    $('#kpiMontoTotal').text(
+        montoTotal.toLocaleString('es-PE', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        })
+    );
+}
 
     let renewModal = new bootstrap.Modal(
       document.getElementById('renewModal')
@@ -153,8 +240,13 @@
 
     let table = $('#contracts-table').DataTable({
     processing: true,
-    ajax: '{{ route("contracts.data") }}',
-    responsive: false,
+ajax: {
+    url: '{{ route("contracts.data") }}',
+    dataSrc: function (json) {
+        actualizarDashboardContratos(json.data);
+        return json.data;
+    }
+},    responsive: false,
     scrollX: true,
     scrollCollapse: true,
     autoWidth: false,
