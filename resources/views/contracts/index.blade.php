@@ -80,6 +80,37 @@
     </div>
   </div>
 </div>
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+      <span class="fw-bold me-2">Filtrar por estado:</span>
+
+      <button type="button" class="btn btn-sm btn-primary filtro-estado active" data-estado="">
+        Todos
+      </button>
+
+      <button type="button" class="btn btn-sm btn-outline-success filtro-estado" data-estado="Vigente">
+        Vigentes
+      </button>
+
+      <button type="button" class="btn btn-sm btn-outline-warning filtro-estado" data-estado="por_vencer">
+        Por vencer
+      </button>
+
+      <button type="button" class="btn btn-sm btn-outline-danger filtro-estado" data-estado="Vencido">
+        Vencidos
+      </button>
+
+      <button type="button" class="btn btn-sm btn-outline-primary filtro-estado" data-estado="renewed">
+        Renovados
+      </button>
+
+      <button type="button" class="btn btn-sm btn-outline-dark filtro-estado" data-estado="not_renewed">
+        No Renovados
+      </button>
+    </div>
+  </div>
+</div>
             <div class="d-flex justify-content-between align-items-center mb-3">
               <a href="{{ route('contracts.create') }}" class="btn btn-sm btn-primary">Nuevo Registro</a>
               <button class="btn btn-sm btn-success" id="btnRefresh"><i class="ri-refresh-line"></i> Recargar</button>
@@ -312,7 +343,7 @@ ajax: {
         {
           data: 'status_badge',
           orderable: false,
-          searchable: false
+          searchable: true
           },
 {
   data: 'files',
@@ -362,20 +393,28 @@ let url = `${baseStorageUrl}/${filePath}`;
     return html;
   }
 },
-{
-          data: 'status',
-          render: function (data) {
-            if(data === 'active') {
-              return `<span class="badge bg-success">Activo</span>`;
-            } else if (data === 'renewed') {
-              return `<span class="badge bg-primary">Renovado</span>`;
-            } else if (data === 'not_renewed') {
-              return `<span class="badge bg-danger">No Renovado</span>`;
-            } else {
-              return `<span class="badge bg-secondary">${data}</span>`;
-            }
-          }        
-        },
+         {
+  data: 'status',
+  render: function (data, type) {
+
+    if (type === 'filter' || type === 'sort') {
+      if (data === 'active') return 'Activo';
+      if (data === 'renewed') return 'Renovado';
+      if (data === 'not_renewed') return 'No Renovado';
+      return data;
+    }
+
+    if(data === 'active') {
+      return `<span class="badge bg-success">Activo</span>`;
+    } else if (data === 'renewed') {
+      return `<span class="badge bg-primary">Renovado</span>`;
+    } else if (data === 'not_renewed') {
+      return `<span class="badge bg-danger">No Renovado</span>`;
+    } else {
+      return `<span class="badge bg-secondary">${data}</span>`;
+    }
+  }        
+},
         {
           data: null,
           orderable: false,
@@ -420,13 +459,71 @@ let url = `${baseStorageUrl}/${filePath}`;
           }
         }
       ],
-      pageLength: 10,
+            pageLength: 10,
       language: {
         url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
       }
     });
+// Filtros rápidos por estado
+$(document).on('click', '.filtro-estado', function () {
 
-    // Recargar tabla
+    let estado = $(this).data('estado');
+
+    $('.filtro-estado')
+        .removeClass('active btn-primary btn-success btn-warning btn-danger btn-dark')
+        .addClass(function () {
+            let e = $(this).data('estado');
+
+            if (e === '') return 'btn-outline-primary';
+            if (e === 'Vigente') return 'btn-outline-success';
+            if (e === 'por_vencer') return 'btn-outline-warning';
+            if (e === 'Vencido') return 'btn-outline-danger';
+            if (e === 'renewed') return 'btn-outline-primary';
+            if (e === 'not_renewed') return 'btn-outline-dark';
+        });
+
+    $(this).removeClass(
+        'btn-outline-primary btn-outline-success btn-outline-warning btn-outline-danger btn-outline-dark'
+    );
+
+    table.search('').columns().search('');
+
+    if (estado === '') {
+        $(this).addClass('active btn-primary');
+        table.draw();
+        return;
+    }
+
+    if (estado === 'Vigente') {
+        $(this).addClass('active btn-success');
+        table.column(9).search('Vigente', true, false).draw();
+        return;
+    }
+
+    if (estado === 'por_vencer') {
+        $(this).addClass('active btn-warning');
+        table.column(9).search('Próximo|Renovación Pendiente|Vence Hoy', true, false).draw();
+        return;
+    }
+
+    if (estado === 'Vencido') {
+        $(this).addClass('active btn-danger');
+        table.column(9).search('Vencido', true, false).draw();
+        return;
+    }
+
+    if (estado === 'renewed') {
+        $(this).addClass('active btn-primary');
+        table.column(11).search('Renovado', true, false).draw();
+        return;
+    }
+
+    if (estado === 'not_renewed') {
+        $(this).addClass('active btn-dark');
+        table.column(11).search('No Renovado', true, false).draw();
+        return;
+    }
+}); // Recargar tabla
     $('#btnRefresh').click(function () {
       table.ajax.reload(null, false);
     });
